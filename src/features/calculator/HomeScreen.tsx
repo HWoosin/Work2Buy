@@ -8,10 +8,20 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   Modal,
   Alert,
+  LogBox,
 } from "react-native";
+
+LogBox.ignoreLogs([
+  "근무조건 저장 실패:",
+  "근무조건 목록 조회 실패:",
+  "앱 설정 불러오기 실패:",
+  "근무조건 삭제 실패:"
+]);
 
 import {
   getWorkProfiles,
@@ -98,7 +108,7 @@ const translations = {
     close: "Close",
     footer: "WORK2BUY · Your time has value.",
     saveProfile: "Save Work Details",
-    loadProfile: "Load Saved Work Details",
+    loadProfile: "Load Work Details",
     profileName: "Profile Name",
     profileNamePlaceholder: "e.g. Full-time Job",
     save: "Save",
@@ -221,34 +231,6 @@ export default function HomeScreen() {
     loadPreferences();
   }, []);
 
-  // 근무 조건 자동 저장
-  //   useEffect(() => {
-  //     if (!shouldAutoSave || !isLoaded) return;
-
-  //     const monthlySalary = Number(salary);
-  //     const dailyHours = Number(workHours);
-  //     const monthlyDays = Number(workDays);
-
-  //     if (monthlySalary <= 0 || dailyHours <= 0 || monthlyDays <= 0) {
-  //       return;
-  //     }
-
-  //     setSaveStatus(t.saving);
-
-  //     const timer = setTimeout(async () => {
-  //       try {
-  //         await saveUserSettings(monthlySalary, dailyHours, monthlyDays);
-
-  //         setSaveStatus(t.saved);
-  //       } catch (error) {
-  //         console.error("근무 조건 저장 실패:", error);
-  //         setSaveStatus(t.saveError);
-  //       }
-  //     }, 500);
-
-  //     return () => clearTimeout(timer);
-  //   }, [salary, workHours, workDays, shouldAutoSave, isLoaded, language]);
-
   // 앱 설정 변경 및 저장
   const updatePreferences = async (
     nextDark: boolean,
@@ -266,51 +248,8 @@ export default function HomeScreen() {
     );
   };
 
-  // 이전 근무 조건 불러오기
-  //   const loadPreviousSettings = async () => {
-  //     try {
-  //       const settings = await getUserSettings();
-
-  //       if (
-  //         !settings ||
-  //         Number(settings.monthly_salary) <= 0 ||
-  //         Number(settings.daily_work_hours) <= 0 ||
-  //         Number(settings.monthly_work_days) <= 0
-  //       ) {
-  //         setSaveStatus(t.noPrevious);
-  //         return;
-  //       }
-
-  //       // 불러온 값이 자동 저장으로 덮어써지지 않도록 처리
-  //       setShouldAutoSave(false);
-  //       setSalary(String(settings.monthly_salary));
-  //       setWorkHours(String(settings.daily_work_hours));
-  //       setWorkDays(String(settings.monthly_work_days));
-  //       setSaveStatus(t.previousLoaded);
-  //     } catch (error) {
-  //       console.error("이전 근무 조건 불러오기 실패:", error);
-  //       setSaveStatus(t.saveError);
-  //     }
-  //   };
-
   // 통화 상태 변경
   const [currency, setCurrency] = useState<CurrencyCode>("KRW");
-
-  // 입력값 변경
-  //   const changeSalary = (value: string) => {
-  //     setSalary(value);
-  //     // setShouldAutoSave(true);
-  //   };
-
-  //   const changeWorkHours = (value: string) => {
-  //     setWorkHours(value);
-  //     // setShouldAutoSave(true);
-  //   };
-
-  //   const changeWorkDays = (value: string) => {
-  //     setWorkDays(value);
-  //     // setShouldAutoSave(true);
-  //   };
 
   // 근무조건 저장 모달 열기
   const openSaveModal = () => {
@@ -424,10 +363,17 @@ export default function HomeScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: colors.background }]}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
       >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        >
         {/* 상단 */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
@@ -588,7 +534,8 @@ export default function HomeScreen() {
         </View>
 
         <Text style={[styles.footer, { color: colors.muted }]}>{t.footer}</Text>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* 근무조건 저장 모달 */}
       <Modal
@@ -920,6 +867,9 @@ const formatWorkDays = (days: number, language: Language) => {
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+  },
+  keyboardAvoiding: {
     flex: 1,
   },
   container: {
