@@ -13,9 +13,9 @@ export async function getDatabase() {
 
     CREATE TABLE IF NOT EXISTS user_settings (
       id INTEGER PRIMARY KEY NOT NULL,
-      monthly_salary INTEGER NOT NULL DEFAULT 2600000,
-      daily_work_hours REAL NOT NULL DEFAULT 8,
-      monthly_work_days INTEGER NOT NULL DEFAULT 20
+      monthly_salary INTEGER NOT NULL DEFAULT 0,
+      daily_work_hours REAL NOT NULL DEFAULT 0,
+      monthly_work_days INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS purchase_history (

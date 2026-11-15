@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,125 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Keyboard,
 } from 'react-native';
 
-export default function HomeScreen() {
-  const [salary, setSalary] = useState('2600000');
-  const [workHours, setWorkHours] = useState('8');
-  const [workDays, setWorkDays] = useState('20');
-  const [price, setPrice] = useState('1000000');
+import {
+  getUserSettings,
+  saveUserSettings,
+} from '../../database/database';
 
+type InputFieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  suffix: string;
+};
+
+function InputField({
+  label,
+  value,
+  onChange,
+  suffix,
+}: InputFieldProps) {
   const formatNumber = (value: string) => {
     const number = value.replace(/[^0-9]/g, '');
     return number ? Number(number).toLocaleString('ko-KR') : '';
   };
 
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.inputLabel}>{label}</Text>
+
+      <View style={styles.inputBox}>
+        <TextInput
+          style={styles.input}
+          value={formatNumber(value)}
+          onChangeText={(text) =>
+            onChange(text.replace(/[^0-9]/g, ''))
+          }
+          keyboardType="number-pad"
+          placeholder="0"
+          placeholderTextColor="#9CA3AF"
+          selectTextOnFocus
+        />
+
+        <Text style={styles.suffix}>{suffix}</Text>
+      </View>
+    </View>
+  );
+}
+
+export default function HomeScreen() {
+  const [salary, setSalary] = useState('0');
+  const [workHours, setWorkHours] = useState('0');
+  const [workDays, setWorkDays] = useState('0');
+  const [price, setPrice] = useState('0');
+
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('불러오는 중...');
+
+  // 앱 실행 시 SQLite에서 근무 조건 불러오기
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await getUserSettings();
+
+        if (settings) {
+          setSalary(String(settings.monthly_salary));
+          setWorkHours(String(settings.daily_work_hours));
+          setWorkDays(String(settings.monthly_work_days));
+        }
+
+        setSaveStatus('저장 완료');
+      } catch (error) {
+        console.error('설정 불러오기 실패:', error);
+        setSaveStatus('불러오기 실패');
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // 근무 조건 변경 시 SQLite에 자동 저장
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const monthlySalary = Number(salary);
+    const dailyHours = Number(workHours);
+    const monthlyDays = Number(workDays);
+
+    // 빈 값이나 잘못된 값은 저장하지 않음
+    if (
+      monthlySalary <= 0 ||
+      dailyHours <= 0 ||
+      monthlyDays <= 0
+    ) {
+      return;
+    }
+
+    setSaveStatus('저장 중...');
+
+    const timer = setTimeout(async () => {
+      try {
+        await saveUserSettings(
+          monthlySalary,
+          dailyHours,
+          monthlyDays
+        );
+
+        setSaveStatus('저장 완료');
+      } catch (error) {
+        console.error('설정 저장 실패:', error);
+        setSaveStatus('저장 실패');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [salary, workHours, workDays, isLoaded]);
+
+  // 구매 노동시간 계산
   const result = useMemo(() => {
     const monthlySalary = Number(salary);
     const dailyHours = Number(workHours);
@@ -36,7 +141,9 @@ export default function HomeScreen() {
       return null;
     }
 
-    const hourlyWage = monthlySalary / (dailyHours * monthlyDays);
+    const hourlyWage =
+      monthlySalary / (dailyHours * monthlyDays);
+
     const requiredHours = itemPrice / hourlyWage;
     const requiredDays = requiredHours / dailyHours;
 
@@ -47,36 +154,6 @@ export default function HomeScreen() {
     };
   }, [salary, workHours, workDays, price]);
 
-  const InputField = ({
-    label,
-    value,
-    onChange,
-    suffix,
-  }: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    suffix: string;
-  }) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <View style={styles.inputBox}>
-        <TextInput
-          style={styles.input}
-          value={formatNumber(value)}
-          onChangeText={(text) =>
-            onChange(text.replace(/[^0-9]/g, ''))
-          }
-          keyboardType="number-pad"
-          placeholder="0"
-          placeholderTextColor="#9CA3AF"
-          selectTextOnFocus
-        />
-        <Text style={styles.suffix}>{suffix}</Text>
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -85,7 +162,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>WORK PRICE</Text>
+            <Text style={styles.logo}>WORK2BUY</Text>
             <Text style={styles.subtitle}>
               당신의 노동시간으로 소비를 계산하세요.
             </Text>
@@ -93,7 +170,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>나의 근무 조건</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>나의 근무 조건</Text>
+            <Text style={styles.saveStatus}>{saveStatus}</Text>
+          </View>
 
           <View style={styles.card}>
             <InputField
@@ -180,7 +260,7 @@ export default function HomeScreen() {
         </View>
 
         <Text style={styles.footer}>
-          WORK PRICE · 당신의 시간에는 가치가 있습니다.
+          WORK2BUY · 당신의 시간에는 가치가 있습니다.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -214,11 +294,20 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 22,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '800',
     color: '#1E293B',
-    marginBottom: 12,
+  },
+  saveStatus: {
+    fontSize: 11,
+    color: '#64748B',
   },
   card: {
     backgroundColor: '#FFFFFF',
