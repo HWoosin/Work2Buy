@@ -14,6 +14,8 @@ export type WishlistItem = {
   snapshot_daily_hours?: number | null;
   snapshot_monthly_days?: number | null;
   snapshot_required_hours?: number | null;
+
+  reminder_notification_id?: string | null;
 };
 
 export function getRemainingDays(item: WishlistItem, now = Date.now()) {

@@ -1,14 +1,22 @@
+
 import { WishlistItem } from "../features/wishlist/wishlistUtils";
+
+export function initWishlistDatabase(): Promise<void>;
 
 export function addWishlistItem(
   name: string,
   price: number,
   holdDays: number
-): Promise<void>;
+): Promise<number>;
 
 export function deleteWishlistItem(id: number): Promise<void>;
 
 export function getWishlistItems(): Promise<WishlistItem[]>;
+
+export function setWishlistReminderId(
+  id: number,
+  notificationId: string | null
+): Promise<void>;
 
 export function updateWishlistStatus(
   id: number,

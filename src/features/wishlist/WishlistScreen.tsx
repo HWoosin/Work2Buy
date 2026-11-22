@@ -23,7 +23,13 @@ import {
   deleteWishlistItem,
   getWishlistItems,
   updateWishlistStatus,
+  setWishlistReminderId,
 } from "../../database/wishlistDatabase.js";
+
+import {
+  scheduleWishlistReminder,
+  cancelWishlistReminder,
+} from "./notificationUtils";
 
 type Props = {
   onBack: () => void;
@@ -89,6 +95,7 @@ export default function WishlistScreen({
 
   const handleAdd = async () => {
     const numericPrice = Number(price.replace(/,/g, ""));
+
     if (!name.trim() || !Number.isFinite(numericPrice) || numericPrice <= 0) {
       setError(
         ko
@@ -97,16 +104,39 @@ export default function WishlistScreen({
       );
       return;
     }
+
     try {
-      await addWishlistItem(name.trim(), numericPrice, holdDays);
+      // 1. DB에 고민 항목 저장
+      const newId = await addWishlistItem(name.trim(), numericPrice, holdDays);
+
+      // 2. 저장된 항목 조회
+      try {
+        const rows = await getWishlistItems();
+        const newItem = rows.find((item) => item.id === newId);
+
+        // 3. 보류 종료 알림 예약
+        if (newItem) {
+          const notificationId = await scheduleWishlistReminder(newItem);
+
+          // 4. 예약 ID DB 저장
+          if (notificationId) {
+            await setWishlistReminderId(newId, notificationId);
+          }
+        }
+      } catch (notificationError) {
+        console.error("구매 보류 알림 예약 실패:", notificationError);
+      }
+
       setName("");
       setPrice("");
       setHoldDays(7);
       setError("");
       setModalVisible(false);
+
       await loadItems();
     } catch (e) {
       console.error("구매 고민 저장 실패:", e);
+
       setError(
         ko
           ? "저장하지 못했습니다. 다시 시도해 주세요."
@@ -153,6 +183,15 @@ export default function WishlistScreen({
           text: ko ? "완료" : "Confirm",
           onPress: async () => {
             try {
+              // 기존 예약 알림 취소
+              if (item.reminder_notification_id) {
+                try {
+                  await cancelWishlistReminder(item.reminder_notification_id);
+                } catch (notificationError) {
+                  console.error("구매 완료 알림 취소 실패:", notificationError);
+                }
+              }
+
               await updateWishlistStatus(item.id, "purchased", {
                 salary: monthlySalary,
                 dailyHours,
@@ -188,8 +227,26 @@ export default function WishlistScreen({
           text: ko ? "삭제" : "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteWishlistItem(item.id);
-            await loadItems();
+            try {
+              // 예약 알림 취소
+              if (item.reminder_notification_id) {
+                try {
+                  await cancelWishlistReminder(item.reminder_notification_id);
+                } catch (notificationError) {
+                  console.error("삭제 알림 취소 실패:", notificationError);
+                }
+              }
+
+              await deleteWishlistItem(item.id);
+              await loadItems();
+            } catch (e) {
+              console.error("구매 고민 삭제 실패:", e);
+
+              Alert.alert(
+                ko ? "오류" : "Error",
+                ko ? "삭제하지 못했습니다." : "Could not delete the item.",
+              );
+            }
           },
         },
       ],
@@ -280,25 +337,25 @@ export default function WishlistScreen({
 
             {[
               [
-                ko ? "월급" : "Monthly salary",
+                ko ? "월급: " : "Monthly salary: ",
                 savedSalary != null
                   ? `${Number(savedSalary).toLocaleString("ko-KR")}원`
                   : "-",
               ],
               [
-                ko ? "하루 근무시간" : "Daily work hours",
+                ko ? "하루 근무시간: " : "Daily work hours: ",
                 savedDailyHours != null
                   ? `${savedDailyHours}${ko ? "시간" : " hrs"}`
                   : "-",
               ],
               [
-                ko ? "월 근무일" : "Monthly work days",
+                ko ? "월 근무일: " : "Monthly work days: ",
                 savedMonthlyDays != null
                   ? `${savedMonthlyDays}${ko ? "일" : " days"}`
                   : "-",
               ],
               [
-                ko ? "시간당 임금" : "Hourly pay",
+                ko ? "시간당 임금: " : "Hourly pay: ",
                 savedHourlyPay != null
                   ? `${Math.round(savedHourlyPay).toLocaleString("ko-KR")}원`
                   : "-",

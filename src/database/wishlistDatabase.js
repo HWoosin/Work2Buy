@@ -1,3 +1,4 @@
+
 import * as SQLite from 'expo-sqlite';
 
 let db = null;
@@ -21,7 +22,6 @@ async function getDB() {
         );
       `);
 
-      // 기존 테이블에 구매 당시 기록 컬럼이 없으면 추가
       const columns = await connection.getAllAsync(
         'PRAGMA table_info(wishlist_items);'
       );
@@ -33,6 +33,7 @@ async function getDB() {
         ['snapshot_daily_hours', 'REAL'],
         ['snapshot_monthly_days', 'REAL'],
         ['snapshot_required_hours', 'REAL'],
+        ['reminder_notification_id', 'TEXT'],
       ];
 
       for (const [name, type] of migrations) {
@@ -85,7 +86,6 @@ export async function addWishlistItem(name, price, holdDays) {
   return result.lastInsertRowId;
 }
 
-// 구매 완료 시점의 근무조건과 노동시간을 함께 저장
 export async function updateWishlistStatus(id, status, snapshot = null) {
   const database = await getDB();
 
@@ -97,7 +97,8 @@ export async function updateWishlistStatus(id, status, snapshot = null) {
            snapshot_salary = ?,
            snapshot_daily_hours = ?,
            snapshot_monthly_days = ?,
-           snapshot_required_hours = ?
+           snapshot_required_hours = ?,
+           reminder_notification_id = NULL
        WHERE id = ?`,
       [
         status,
@@ -111,10 +112,26 @@ export async function updateWishlistStatus(id, status, snapshot = null) {
     );
   } else {
     await database.runAsync(
-      `UPDATE wishlist_items SET status = ? WHERE id = ?`,
-      [status, id]
+      `UPDATE wishlist_items
+       SET status = ?,
+           reminder_notification_id =
+             CASE WHEN ? = 'purchased' THEN NULL
+                  ELSE reminder_notification_id END
+       WHERE id = ?`,
+      [status, status, id]
     );
   }
+}
+
+export async function setWishlistReminderId(id, notificationId) {
+  const database = await getDB();
+
+  await database.runAsync(
+    `UPDATE wishlist_items
+     SET reminder_notification_id = ?
+     WHERE id = ?`,
+    [notificationId, id]
+  );
 }
 
 export async function deleteWishlistItem(id) {
