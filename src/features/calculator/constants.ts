@@ -1,0 +1,121 @@
+export type Language = "ko" | "en";
+
+export type WorkProfile = {
+  id: number;
+  name: string;
+  monthly_salary: number;
+  daily_work_hours: number;
+  monthly_work_days: number;
+};
+
+export const translations = {
+  ko: {
+    subtitle: "당신의 노동시간으로 소비를 계산하세요.",
+    workCondition: "나의 근무 조건",
+    salary: "월 실수령액",
+    workHours: "하루 근무시간",
+    workDays: "월 근무일",
+    previous: "이전 근무조건 불러오기",
+    previousLoaded: "이전 근무조건을 불러왔습니다.",
+    noPrevious: "저장된 근무조건이 없습니다.",
+    loading: "불러오는 중...",
+    saving: "저장 중...",
+    saved: "저장 완료",
+    saveError: "저장 실패",
+    purchase: "구매할 물건",
+    price: "구매 가격",
+    result: "이 물건을 사기 위해 필요한 시간",
+    hourly: "시간당 실수령액",
+    days: "근무일 환산",
+    invalid: "올바른 금액과 근무 조건을 입력해 주세요.",
+    settings: "설정",
+    theme: "화면 테마",
+    light: "라이트 모드",
+    dark: "다크 모드",
+    language: "언어 설정",
+    close: "닫기",
+    footer: "WORK2BUY · 당신의 시간에는 가치가 있습니다.",
+    saveProfile: "근무조건 저장",
+    loadProfile: "저장된 근무조건 불러오기",
+    profileName: "근무조건 이름",
+    profileNamePlaceholder: "예: 본업, 아르바이트",
+    save: "저장",
+    cancel: "취소",
+    noProfiles: "저장된 근무조건이 없습니다.",
+    delete: "삭제",
+    profileSaved: "근무조건을 저장했습니다.",
+    invalidProfile: "근무조건을 모두 올바르게 입력해 주세요.",
+    duplicateProfile: "이미 사용 중인 이름입니다.",
+  },
+
+  en: {
+    subtitle: "See what things cost in work time.",
+    workCondition: "Work Details",
+    salary: "Monthly Net Income",
+    workHours: "Hours per Workday",
+    workDays: "Workdays per Month",
+    previous: "Load Previous Settings",
+    previousLoaded: "Previous settings loaded.",
+    noPrevious: "No saved settings found.",
+    loading: "Loading...",
+    saving: "Saving...",
+    saved: "Saved",
+    saveError: "Save failed",
+    purchase: "What Are You Buying?",
+    price: "Purchase Price",
+    result: "Time Needed to Afford This",
+    hourly: "Hourly Net Pay",
+    days: "Equivalent Work Time",
+    invalid: "Please enter valid amounts and work details.",
+    settings: "Settings",
+    theme: "Theme",
+    light: "Light Mode",
+    dark: "Dark Mode",
+    language: "Language",
+    close: "Close",
+    footer: "WORK2BUY · Your time has value.",
+    saveProfile: "Save Work Details",
+    loadProfile: "Load Work Details",
+    profileName: "Profile Name",
+    profileNamePlaceholder: "e.g. Full-time Job",
+    save: "Save",
+    cancel: "Cancel",
+    noProfiles: "No saved work details.",
+    delete: "Delete",
+    profileSaved: "Work details saved.",
+    invalidProfile: "Please enter valid work details.",
+    duplicateProfile: "This name is already in use.",
+  },
+};
+
+export const palette = {
+  light: {
+    background: "#F5F6FA",
+    card: "#FFFFFF",
+    input: "#F8FAFC",
+    text: "#1E293B",
+    muted: "#64748B",
+    logo: "#172554",
+    result: "#172554",
+    divider: "#334678",
+    button: "#E8EEFF",
+    buttonText: "#2446A8",
+    border: "#E2E8F0",
+  },
+  dark: {
+    background: "#0F172A",
+    card: "#1E293B",
+    input: "#334155",
+    text: "#F8FAFC",
+    muted: "#94A3B8",
+    logo: "#BFDBFE",
+    result: "#1E3A5F",
+    divider: "#475569",
+    button: "#334155",
+    buttonText: "#BFDBFE",
+    border: "#475569",
+  },
+};
+
+
+export type PaletteColors = typeof palette.light;
