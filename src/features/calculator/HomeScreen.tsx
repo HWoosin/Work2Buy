@@ -5,6 +5,7 @@ import { calculateWorkCost, formatWorkDays } from "./calculatorUtils";
 import InputField from "./components/InputField";
 import WorkProfileModals from "./components/WorkProfileModals";
 import SettingsModal from "./components/SettingsModal";
+import WishlistScreen from "../wishlist/WishlistScreen";
 
 import {
   View,
@@ -23,7 +24,7 @@ LogBox.ignoreLogs([
   "근무조건 저장 실패:",
   "근무조건 목록 조회 실패:",
   "앱 설정 불러오기 실패:",
-  "근무조건 삭제 실패:"
+  "근무조건 삭제 실패:",
 ]);
 
 import {
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   const [workHours, setWorkHours] = useState("0");
   const [workDays, setWorkDays] = useState("0");
   const [price, setPrice] = useState("0");
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const [isDark, setIsDark] = useState(false);
   const [language, setLanguage] = useState<Language>("ko");
@@ -181,6 +183,24 @@ export default function HomeScreen() {
     [salary, workHours, workDays, price],
   );
 
+  if (isWishlistOpen) {
+    return (
+      <WishlistScreen
+        onBack={() => setIsWishlistOpen(false)}
+        onEditWorkConditions={() => {
+          setIsWishlistOpen(false);
+          // 근무조건 설정 화면을 여는 코드가 여기에 필요합니다.
+        }}
+        colors={colors}
+        language={language}
+        currency={currency}
+        monthlySalary={Number(salary)}
+        dailyHours={Number(workHours)}
+        monthlyDays={Number(workDays)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: colors.background }]}
@@ -193,169 +213,193 @@ export default function HomeScreen() {
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
-        {/* 상단 */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.logo, { color: colors.logo }]}>WORK2BUY</Text>
-            <Text style={[styles.subtitle, { color: colors.muted }]}>
-              {t.subtitle}
+          {/* 상단 */}
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.logo, { color: colors.logo }]}>
+                WORK2BUY
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.muted }]}>
+                {t.subtitle}
+              </Text>
+            </View>
+
+            <Pressable
+              style={[
+                styles.wishlistButton,
+                { backgroundColor: colors.button },
+              ]}
+              onPress={() => setIsWishlistOpen(true)}
+            >
+              <Text
+                style={{
+                  color: colors.buttonText,
+                  fontSize: 12,
+                  fontWeight: "800",
+                }}
+              >
+                {language === "ko" ? "구매 보관함" : "Wishlist"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.settingsButton, { backgroundColor: colors.card }]}
+              onPress={() => setIsSettingsOpen(true)}
+            >
+              <Text style={{ fontSize: 22, color: colors.text }}>⚙</Text>
+            </Pressable>
+          </View>
+
+          {/* 근무 조건 */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {t.workCondition}
             </Text>
-          </View>
 
-          <Pressable
-            style={[styles.settingsButton, { backgroundColor: colors.card }]}
-            onPress={() => setIsSettingsOpen(true)}
-          >
-            <Text style={{ fontSize: 22, color: colors.text }}>⚙</Text>
-          </Pressable>
-        </View>
-
-        {/* 근무 조건 */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t.workCondition}
-          </Text>
-
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <InputField
-              label={t.salary}
-              value={salary}
-              onChange={setSalary}
-              suffix={CURRENCIES[currency].symbol}
-              colors={colors}
-            />
-
-            <View style={styles.row}>
-              <View style={styles.half}>
-                <InputField
-                  label={t.workHours}
-                  value={workHours}
-                  onChange={setWorkHours}
-                  suffix={language === "ko" ? "시간" : "hrs"}
-                  colors={colors}
-                />
-              </View>
-
-              <View style={styles.half}>
-                <InputField
-                  label={t.workDays}
-                  value={workDays}
-                  onChange={setWorkDays}
-                  suffix={language === "ko" ? "일" : "days"}
-                  colors={colors}
-                />
-              </View>
-            </View>
-
-            {/* 근무조건 저장 및 불러오기 */}
-            <View style={styles.profileButtonRow}>
-              <Pressable
-                style={[
-                  styles.profileButton,
-                  { backgroundColor: colors.button },
-                ]}
-                onPress={openSaveModal}
-              >
-                <Text
-                  style={[
-                    styles.previousButtonText,
-                    { color: colors.buttonText },
-                  ]}
-                >
-                  + {t.saveProfile}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.profileButton,
-                  { backgroundColor: colors.button },
-                ]}
-                onPress={openLoadModal}
-              >
-                <Text
-                  style={[
-                    styles.previousButtonText,
-                    { color: colors.buttonText },
-                  ]}
-                >
-                  ↻ {t.loadProfile}
-                </Text>
-              </Pressable>
-            </View>
-
-            {!!saveStatus && (
-              <Text style={[styles.saveStatus, { color: colors.muted }]}>
-                {saveStatus}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* 구매할 물건 */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t.purchase}
-          </Text>
-
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <InputField
-              label={t.price}
-              value={price}
-              onChange={setPrice}
-              suffix={CURRENCIES[currency].symbol}
-              colors={colors}
-            />
-          </View>
-        </View>
-
-        {/* 계산 결과 */}
-        <View style={[styles.resultCard, { backgroundColor: colors.result }]}>
-          <Text style={styles.resultCaption}>{t.result}</Text>
-
-          {result ? (
-            <>
-              <Text style={styles.resultNumber}>
-                {result.requiredHours.toFixed(1)}
-                <Text style={styles.resultUnit}>
-                  {language === "ko" ? " 시간" : " hrs"}
-                </Text>
-              </Text>
-
-              <View
-                style={[
-                  styles.resultDivider,
-                  { backgroundColor: colors.divider },
-                ]}
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
+              <InputField
+                label={t.salary}
+                value={salary}
+                onChange={setSalary}
+                suffix={CURRENCIES[currency].symbol}
+                colors={colors}
               />
 
-              <View style={styles.resultRow}>
-                <View>
-                  <Text style={styles.resultLabel}>{t.hourly}</Text>
-                  <Text style={styles.resultValue}>
-                    {CURRENCIES[currency].symbol}
-                    {Math.round(result.hourlyWage).toLocaleString("ko-KR")}
-                  </Text>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <InputField
+                    label={t.workHours}
+                    value={workHours}
+                    onChange={setWorkHours}
+                    suffix={language === "ko" ? "시간" : "hrs"}
+                    colors={colors}
+                  />
                 </View>
 
-                <View>
-                  <Text style={styles.resultLabel}>{t.days}</Text>
-                  <Text style={styles.resultValue}>
-                    {/* {result.requiredDays.toFixed(1)}  기존 일수만 나오던것을 년 월 일 단위로 세팅*/}
-                    {formatWorkDays(result.requiredDays, language)}
-                  </Text>
+                <View style={styles.half}>
+                  <InputField
+                    label={t.workDays}
+                    value={workDays}
+                    onChange={setWorkDays}
+                    suffix={language === "ko" ? "일" : "days"}
+                    colors={colors}
+                  />
                 </View>
               </View>
-            </>
-          ) : (
-            <Text style={styles.emptyText}>{t.invalid}</Text>
-          )}
-        </View>
 
-        <Text style={[styles.footer, { color: colors.muted }]}>{t.footer}</Text>
+              {/* 근무조건 저장 및 불러오기 */}
+              <View style={styles.profileButtonRow}>
+                <Pressable
+                  style={[
+                    styles.profileButton,
+                    { backgroundColor: colors.button },
+                  ]}
+                  onPress={openSaveModal}
+                >
+                  <Text
+                    style={[
+                      styles.previousButtonText,
+                      { color: colors.buttonText },
+                    ]}
+                  >
+                    + {t.saveProfile}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.profileButton,
+                    { backgroundColor: colors.button },
+                  ]}
+                  onPress={openLoadModal}
+                >
+                  <Text
+                    style={[
+                      styles.previousButtonText,
+                      { color: colors.buttonText },
+                    ]}
+                  >
+                    ↻ {t.loadProfile}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {!!saveStatus && (
+                <Text style={[styles.saveStatus, { color: colors.muted }]}>
+                  {saveStatus}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* 구매할 물건 */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {t.purchase}
+            </Text>
+
+            <View style={[styles.card, { backgroundColor: colors.card }]}>
+              <InputField
+                label={t.price}
+                value={price}
+                onChange={setPrice}
+                suffix={CURRENCIES[currency].symbol}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* 계산 결과 */}
+          <View style={[styles.resultCard, { backgroundColor: colors.result }]}>
+            <Text style={styles.resultCaption}>{t.result}</Text>
+
+            {result ? (
+              <>
+                <Text style={styles.resultNumber}>
+                  {result.requiredHours.toFixed(1)}
+                  <Text style={styles.resultUnit}>
+                    {language === "ko" ? " 시간" : " hrs"}
+                  </Text>
+                </Text>
+
+                <View
+                  style={[
+                    styles.resultDivider,
+                    { backgroundColor: colors.divider },
+                  ]}
+                />
+
+                <View style={styles.resultRow}>
+                  <View>
+                    <Text style={styles.resultLabel}>{t.hourly}</Text>
+                    <Text style={styles.resultValue}>
+                      {CURRENCIES[currency].symbol}
+                      {Math.round(result.hourlyWage).toLocaleString("ko-KR")}
+                    </Text>
+                  </View>
+
+                  <View>
+                    <Text style={styles.resultLabel}>{t.days}</Text>
+                    <Text style={styles.resultValue}>
+                      {/* {result.requiredDays.toFixed(1)}  기존 일수만 나오던것을 년 월 일 단위로 세팅*/}
+                      {formatWorkDays(result.requiredDays, language)}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.emptyText}>{t.invalid}</Text>
+            )}
+          </View>
+
+          <Text style={[styles.footer, { color: colors.muted }]}>
+            {t.footer}
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -416,6 +460,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 7,
+  },
+  wishlistButton: {
+    paddingHorizontal: 12,
+    height: 42,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
   },
   settingsButton: {
     width: 46,
@@ -515,5 +567,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 11,
     marginTop: 28,
-  }
+  },
 });
