@@ -57,6 +57,9 @@ export default function WishlistScreen({
   const [holdDays, setHoldDays] = useState(7);
   const [filter, setFilter] = useState<"pending" | "purchased">("pending");
   const [error, setError] = useState("");
+  const [selectedDetail, setSelectedDetail] = useState<WishlistItem | null>(
+    null,
+  );
 
   const hasWorkConditions =
     monthlySalary > 0 && dailyHours > 0 && monthlyDays > 0;
@@ -113,18 +116,62 @@ export default function WishlistScreen({
   };
 
   const markPurchased = (item: WishlistItem) => {
+    if (!hasWorkConditions) {
+      Alert.alert(
+        ko ? "근무조건 미설정" : "Work details not set",
+        ko
+          ? "구매 완료 기록을 남기려면 먼저 근무조건을 설정해 주세요."
+          : "Please set your work details before completing this purchase.",
+      );
+      return;
+    }
+
+    const requiredHours = getRequiredHours(
+      Number(item.price),
+      monthlySalary,
+      dailyHours,
+      monthlyDays,
+    );
+
+    if (requiredHours === null) {
+      Alert.alert(
+        ko ? "계산 오류" : "Calculation error",
+        ko
+          ? "필요한 노동시간을 계산할 수 없습니다."
+          : "Could not calculate work hours.",
+      );
+      return;
+    }
     Alert.alert(
       ko ? "구매 완료" : "Mark as purchased",
       ko
-        ? `${item.name} 구매를 완료하셨나요?`
-        : `Have you purchased ${item.name}?`,
+        ? `${item.name} 구매를 완료하셨나요?\n당시 필요한 노동시간: ${requiredHours.toFixed(1)}시간`
+        : `Have you purchased ${item.name}?\nRequired work time: ${requiredHours.toFixed(1)} hours`,
       [
         { text: ko ? "취소" : "Cancel", style: "cancel" },
         {
           text: ko ? "완료" : "Confirm",
           onPress: async () => {
-            await updateWishlistStatus(item.id, "purchased");
-            await loadItems();
+            try {
+              await updateWishlistStatus(item.id, "purchased", {
+                salary: monthlySalary,
+                dailyHours,
+                monthlyDays,
+                requiredHours,
+                purchasedAt: new Date().toISOString(),
+              });
+
+              await loadItems();
+            } catch (e) {
+              console.error("구매 완료 저장 실패:", e);
+
+              Alert.alert(
+                ko ? "오류" : "Error",
+                ko
+                  ? "구매 완료 기록을 저장하지 못했습니다."
+                  : "Failed to save purchase record.",
+              );
+            }
           },
         },
       ],
@@ -148,7 +195,167 @@ export default function WishlistScreen({
       ],
     );
   };
+  if (selectedDetail) {
+    const detail = selectedDetail;
 
+    const purchasedDate = detail.purchased_at
+      ? new Date(detail.purchased_at).toLocaleString(ko ? "ko-KR" : "en-US")
+      : "-";
+
+    const savedHours = detail.snapshot_required_hours;
+    const savedDailyHours = detail.snapshot_daily_hours;
+    const savedSalary = detail.snapshot_salary;
+    const savedMonthlyDays = detail.snapshot_monthly_days;
+
+    const savedHourlyPay =
+      savedSalary && savedDailyHours && savedMonthlyDays
+        ? savedSalary / (savedDailyHours * savedMonthlyDays)
+        : null;
+
+    return (
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: colors.background }]}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => setSelectedDetail(null)}
+              style={[styles.back, { backgroundColor: colors.card }]}
+            >
+              <Text style={{ color: colors.text, fontSize: 20 }}>‹</Text>
+            </Pressable>
+
+            <Text style={[styles.title, { color: colors.text }]}>
+              {ko ? "구매 기록 상세" : "Purchase Details"}
+            </Text>
+          </View>
+
+          <View style={[styles.summary, { backgroundColor: colors.result }]}>
+            <Text style={styles.summaryLabel}>
+              {ko ? "구매 완료" : "Purchased"}
+            </Text>
+            <Text style={styles.summaryNumber}>{detail.name}</Text>
+            <Text style={styles.summaryHint}>
+              {ko ? "구매 가격" : "Purchase price"}
+            </Text>
+            <Text style={styles.summaryNumber}>
+              {symbol}
+              {Number(detail.price).toLocaleString()}
+            </Text>
+          </View>
+
+          <View style={[styles.summary, { backgroundColor: colors.card }]}>
+            <Text style={[styles.summaryLabel, { color: colors.muted }]}>
+              {ko ? "구매 당시 필요한 노동시간" : "Work time required"}
+            </Text>
+
+            <Text style={[styles.summaryNumber, { color: colors.logo }]}>
+              {savedHours == null
+                ? "--"
+                : `${savedHours.toFixed(1)} ${ko ? "시간" : "hrs"}`}
+            </Text>
+
+            {savedHours != null && savedDailyHours ? (
+              <Text style={[styles.summaryHint, { color: colors.muted }]}>
+                {ko
+                  ? `${Math.floor(savedHours / savedDailyHours)}일 ${(
+                      savedHours % savedDailyHours
+                    ).toFixed(1)}시간 상당`
+                  : `${Math.floor(savedHours / savedDailyHours)} days and ${(
+                      savedHours % savedDailyHours
+                    ).toFixed(1)} hours`}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={[styles.empty, { backgroundColor: colors.card }]}>
+            <Text
+              style={[
+                styles.emptyTitle,
+                { color: colors.text, marginBottom: 16 },
+              ]}
+            >
+              {ko ? "구매 당시 근무조건" : "Work conditions at purchase"}
+            </Text>
+
+            {[
+              [
+                ko ? "월급" : "Monthly salary",
+                savedSalary != null
+                  ? `${Number(savedSalary).toLocaleString("ko-KR")}원`
+                  : "-",
+              ],
+              [
+                ko ? "하루 근무시간" : "Daily work hours",
+                savedDailyHours != null
+                  ? `${savedDailyHours}${ko ? "시간" : " hrs"}`
+                  : "-",
+              ],
+              [
+                ko ? "월 근무일" : "Monthly work days",
+                savedMonthlyDays != null
+                  ? `${savedMonthlyDays}${ko ? "일" : " days"}`
+                  : "-",
+              ],
+              [
+                ko ? "시간당 임금" : "Hourly pay",
+                savedHourlyPay != null
+                  ? `${Math.round(savedHourlyPay).toLocaleString("ko-KR")}원`
+                  : "-",
+              ],
+            ].map(([label, value], index) => (
+              <View
+                key={index}
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  paddingVertical: 12,
+                  borderBottomWidth: index === 3 ? 0 : 1,
+                  borderBottomColor: colors.border,
+                }}
+              >
+                <Text style={{ color: colors.muted }}>{label}</Text>
+                <Text style={{ color: colors.text, fontWeight: "700" }}>
+                  {value}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.empty, { backgroundColor: colors.card }]}>
+            <Text style={[styles.emptyHint, { color: colors.muted }]}>
+              {ko ? "구매 완료 날짜" : "Purchase date"}
+            </Text>
+            <Text
+              style={[styles.emptyTitle, { color: colors.text, marginTop: 6 }]}
+            >
+              {purchasedDate}
+            </Text>
+          </View>
+
+          {savedHours == null && (
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 12 }}>
+              {ko
+                ? "이 항목은 기능 추가 전에 구매 완료된 기록이므로 당시 근무조건이 저장되어 있지 않습니다."
+                : "This purchase was recorded before historical work-condition snapshots were added."}
+            </Text>
+          )}
+
+          <Pressable
+            onPress={() => setSelectedDetail(null)}
+            style={[
+              styles.addButton,
+              { backgroundColor: colors.button, marginTop: 16 },
+            ]}
+          >
+            <Text style={[styles.addButtonText, { color: colors.buttonText }]}>
+              {ko ? "목록으로 돌아가기" : "Back to list"}
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -303,17 +510,20 @@ export default function WishlistScreen({
                 language={language}
                 currencySymbol={symbol}
                 requiredHours={
-                  hasWorkConditions
-                    ? getRequiredHours(
-                        Number(item.price),
-                        monthlySalary,
-                        dailyHours,
-                        monthlyDays,
-                      )
-                    : null
+                  item.status === "purchased"
+                    ? (item.snapshot_required_hours ?? null)
+                    : hasWorkConditions
+                      ? getRequiredHours(
+                          Number(item.price),
+                          monthlySalary,
+                          dailyHours,
+                          monthlyDays,
+                        )
+                      : null
                 }
                 onPurchase={() => markPurchased(item)}
                 onDelete={() => removeItem(item)}
+                onDetail={() => setSelectedDetail(item)}
               />
             ))
           )}

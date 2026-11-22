@@ -7,6 +7,13 @@ export type WishlistItem = {
   hold_days: number;
   created_at: string;
   status: WishlistStatus;
+
+  // 구매 완료 당시 저장되는 기록
+  purchased_at?: string | null;
+  snapshot_salary?: number | null;
+  snapshot_daily_hours?: number | null;
+  snapshot_monthly_days?: number | null;
+  snapshot_required_hours?: number | null;
 };
 
 export function getRemainingDays(item: WishlistItem, now = Date.now()) {
@@ -20,10 +27,16 @@ export function getRequiredHours(
   monthlySalary: number,
   dailyHours: number,
   monthlyDays: number,
-) {
-  if (price <= 0 || monthlySalary <= 0 || dailyHours <= 0 || monthlyDays <= 0) {
+): number | null {
+  if (
+    price <= 0 ||
+    monthlySalary <= 0 ||
+    dailyHours <= 0 ||
+    monthlyDays <= 0
+  ) {
     return null;
   }
+
   const hourlyPay = monthlySalary / (dailyHours * monthlyDays);
   return price / hourlyPay;
 }

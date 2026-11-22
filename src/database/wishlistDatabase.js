@@ -1,4 +1,3 @@
-
 import * as SQLite from 'expo-sqlite';
 
 let db = null;
@@ -21,6 +20,28 @@ async function getDB() {
           status TEXT NOT NULL DEFAULT 'pending'
         );
       `);
+
+      // 기존 테이블에 구매 당시 기록 컬럼이 없으면 추가
+      const columns = await connection.getAllAsync(
+        'PRAGMA table_info(wishlist_items);'
+      );
+      const existing = new Set(columns.map((column) => column.name));
+
+      const migrations = [
+        ['purchased_at', 'TEXT'],
+        ['snapshot_salary', 'REAL'],
+        ['snapshot_daily_hours', 'REAL'],
+        ['snapshot_monthly_days', 'REAL'],
+        ['snapshot_required_hours', 'REAL'],
+      ];
+
+      for (const [name, type] of migrations) {
+        if (!existing.has(name)) {
+          await connection.execAsync(
+            `ALTER TABLE wishlist_items ADD COLUMN ${name} ${type};`
+          );
+        }
+      }
 
       db = connection;
       return connection;
@@ -52,7 +73,6 @@ export async function getWishlistItems() {
 
 export async function addWishlistItem(name, price, holdDays) {
   const database = await getDB();
-
   const createdAt = new Date().toISOString();
 
   const result = await database.runAsync(
@@ -65,13 +85,36 @@ export async function addWishlistItem(name, price, holdDays) {
   return result.lastInsertRowId;
 }
 
-export async function updateWishlistStatus(id, status) {
+// 구매 완료 시점의 근무조건과 노동시간을 함께 저장
+export async function updateWishlistStatus(id, status, snapshot = null) {
   const database = await getDB();
 
-  await database.runAsync(
-    'UPDATE wishlist_items SET status = ? WHERE id = ?;',
-    [status, id]
-  );
+  if (status === 'purchased' && snapshot) {
+    await database.runAsync(
+      `UPDATE wishlist_items
+       SET status = ?,
+           purchased_at = ?,
+           snapshot_salary = ?,
+           snapshot_daily_hours = ?,
+           snapshot_monthly_days = ?,
+           snapshot_required_hours = ?
+       WHERE id = ?`,
+      [
+        status,
+        snapshot.purchasedAt,
+        snapshot.salary,
+        snapshot.dailyHours,
+        snapshot.monthlyDays,
+        snapshot.requiredHours,
+        id,
+      ]
+    );
+  } else {
+    await database.runAsync(
+      `UPDATE wishlist_items SET status = ? WHERE id = ?`,
+      [status, id]
+    );
+  }
 }
 
 export async function deleteWishlistItem(id) {
